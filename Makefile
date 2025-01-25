@@ -5,6 +5,8 @@ LIBS = -lSDL2
 # Output binary name
 OUTPUT = test
 
+CFLAGS = -Wall
+
 # Automatically find all .c files in the current directory
 SRC = $(wildcard *.c)
 
