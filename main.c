@@ -12,6 +12,10 @@
 #define BLACK 0, 0, 0, 255
 #define TERRIBLE_FAILURE 4206969
 #define NO_FAIL 6969420
+#define PAD_HEIGHT 200
+#define PAD_WIDTH 25
+#define PLAYER_COUNT 2
+#define PAD_MOVING_SPEED 10
 
 #define SDL_ERROR_PRINTF(s)           \
     do                                \
@@ -22,9 +26,11 @@
 
 enum EVENT_TYPE
 {
-    KEYBOARD,
-    EXIT
+    KEYBOARD_DOWN,
+    EXIT,
+    WTF
 };
+
 void FinishSDL()
 {
     SDL_QuitSubSystem(SUBSYSTEMS);
@@ -43,15 +49,27 @@ SDL_Rect GetARect(int x, int y, int h, int w)
 
 enum EVENT_TYPE HandleEvent(SDL_Event *ev)
 {
-    if (ev->type == SDL_QUIT)
+    switch (ev->type)
     {
+    case SDL_QUIT:
         return EXIT;
+    case SDL_KEYDOWN:
+        return KEYBOARD_DOWN;
+
+    default:
+        printf("UNKNOWN EVENT HAPPENED... %d\n", ev->type);
+        return WTF;
     }
+}
+
+bool IsMovementKeyPress(SDL_Event *ev)
+{
+    return ev->key.keysym.scancode == SDL_SCANCODE_RIGHT || ev->key.keysym.scancode == SDL_SCANCODE_LEFT || ev->key.keysym.scancode == SDL_SCANCODE_DOWN || ev->key.keysym.scancode == SDL_SCANCODE_UP;
 }
 
 int ClearScreen(SDL_Renderer *renderer)
 {
-    if (SDL_SetRenderDrawColor(renderer, BLACK) || SDL_RenderClear(renderer))
+    if (SDL_SetRenderDrawColor(renderer, BLACK) != 0 || SDL_RenderClear(renderer) != 0)
     {
         SDL_ERROR_PRINTF("Failing clearing the screen for some reason!!!")
         return TERRIBLE_FAILURE;
@@ -65,6 +83,46 @@ void CloseWindowAndExitFromThisPain(SDL_Window *window, SDL_Renderer *renderer)
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
     FinishSDL();
+}
+
+int DrawRect(SDL_Renderer *renderer, SDL_Rect *rectToDraw)
+{
+    if (SDL_SetRenderDrawColor(renderer, WHITE) != 0)
+    {
+        SDL_ERROR_PRINTF("Failing setting renderer color for some reason!!!")
+        return TERRIBLE_FAILURE;
+    }
+    if (SDL_RenderFillRect(renderer, rectToDraw) != 0)
+    {
+        SDL_ERROR_PRINTF("Failing setting renderer color for some reason!!!")
+        return TERRIBLE_FAILURE;
+    }
+
+    return NO_FAIL;
+}
+
+void UpdateRectMovementDown(SDL_Rect *rect)
+{
+    if (rect->y > 0 && rect->y < SCREEN_HEIGHT)
+    {
+        rect->y += PAD_MOVING_SPEED;
+    }
+}
+
+void UpdateRectMovementUp(SDL_Rect *rect)
+{
+    rect->y -= PAD_MOVING_SPEED;
+}
+
+void DrawPlayers(SDL_Renderer *renderer, SDL_Window *window, SDL_Rect **players, int count)
+{
+    for (size_t i = 0; i < count; i++)
+    {
+        if (DrawRect(renderer, players[i]) == TERRIBLE_FAILURE)
+        {
+            CloseWindowAndExitFromThisPain(window, renderer);
+        }
+    }
 }
 
 int main()
@@ -85,12 +143,37 @@ int main()
     if (!renderer)
     {
         SDL_ERROR_PRINTF("Failing creating renderer...")
+        return 0;
     }
 
     SDL_Event event;
+    SDL_Rect *p1_rect = (SDL_Rect *)malloc(sizeof(SDL_Rect));
+    if (p1_rect == NULL)
+    {
+        printf("FAILING ALLOCATING P1 MEMORY AHHHH...\n");
+        CloseWindowAndExitFromThisPain(window, renderer);
+        return 0;
+    }
+    p1_rect->h = PAD_HEIGHT;
+    p1_rect->w = PAD_WIDTH;
+    p1_rect->x = 50;
+    p1_rect->y = 50;
+    SDL_Rect *p2_rect = (SDL_Rect *)malloc(sizeof(SDL_Rect));
+    if (p2_rect == NULL)
+    {
+        printf("FAILING ALLOCATING P2 MEMORY AHHHH...\n");
+        CloseWindowAndExitFromThisPain(window, renderer);
+        return 0;
+    }
+    p2_rect->h = PAD_HEIGHT;
+    p2_rect->w = PAD_WIDTH;
+    p2_rect->x = 600;
+    p2_rect->y = 100;
 
+    SDL_Rect *players[] = {p1_rect, p2_rect};
     int loc = 50;
     int running = true;
+
     while (running)
     {
         while (SDL_PollEvent(&event)) // This will process every event before any frames!!
@@ -99,23 +182,42 @@ int main()
             {
                 running = false;
             }
+            if (event.type == SDL_QUIT)
+            {
+                running = false;
+            }
+        }
+
+        const Uint8 *keyState = SDL_GetKeyboardState(NULL);
+        if (keyState[SDL_SCANCODE_DOWN])
+        {
+            UpdateRectMovementDown(p1_rect);
+        }
+        if (keyState[SDL_SCANCODE_UP])
+        {
+            UpdateRectMovementUp(p1_rect);
+        }
+        if (keyState[SDL_SCANCODE_W])
+        {
+            UpdateRectMovementUp(p2_rect);
+        }
+        if (keyState[SDL_SCANCODE_S])
+        {
+            UpdateRectMovementDown(p2_rect);
         }
         if (ClearScreen(renderer) == TERRIBLE_FAILURE)
         {
             CloseWindowAndExitFromThisPain(window, renderer);
         }
-        SDL_Rect rect;
-        rect.h = 50;
-        rect.w = 100;
-        rect.x = loc;
-        rect.y = loc;
-        SDL_SetRenderDrawColor(renderer, WHITE); // Red
-        SDL_RenderFillRect(renderer, &rect);
+        DrawPlayers(renderer, window, players, PLAYER_COUNT);
+
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // 60 fps ?
         loc++;
     }
 
+    free(p1_rect);
+    free(p2_rect);
     CloseWindowAndExitFromThisPain(window, renderer);
     return 0;
 }
