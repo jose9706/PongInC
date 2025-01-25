@@ -101,17 +101,30 @@ int DrawRect(SDL_Renderer *renderer, SDL_Rect *rectToDraw)
     return NO_FAIL;
 }
 
+void CheckOrUpdateBounds(SDL_Rect *rect)
+{
+    if (rect->y < 0)
+    {
+        rect->y = 0;
+    }
+    // Rectangles get drawn from a point at y axis. Hence to not leave the screen from the bottom half we have to take y + height = bottom edge pixels and make sure those dont leave the screen.
+    // Then since we force it to not leave we use SCREEN_HEIGHT - h to get the max location to start the y axis rectangle draw.
+    if (rect->y + rect->h > SCREEN_HEIGHT)
+    {
+        rect->y = SCREEN_HEIGHT - rect->h;
+    }
+}
+
 void UpdateRectMovementDown(SDL_Rect *rect)
 {
-    if (rect->y > 0 && rect->y < SCREEN_HEIGHT)
-    {
-        rect->y += PAD_MOVING_SPEED;
-    }
+    rect->y += PAD_MOVING_SPEED;
+    CheckOrUpdateBounds(rect);
 }
 
 void UpdateRectMovementUp(SDL_Rect *rect)
 {
     rect->y -= PAD_MOVING_SPEED;
+    CheckOrUpdateBounds(rect);
 }
 
 void DrawPlayers(SDL_Renderer *renderer, SDL_Window *window, SDL_Rect **players, int count)
