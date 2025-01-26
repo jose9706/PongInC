@@ -1,6 +1,7 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
 #include <stdbool.h>
+#include "ball.h"
 
 #define SUBSYSTEMS SDL_INIT_VIDEO | SDL_INIT_EVENTS
 #define SCREEN_WIDTH 800
@@ -16,6 +17,7 @@
 #define PAD_WIDTH 25
 #define PLAYER_COUNT 2
 #define PAD_MOVING_SPEED 10
+#define BALL_RADIUS 20
 
 #define SDL_ERROR_PRINTF(s)           \
     do                                \
@@ -101,7 +103,7 @@ int DrawRect(SDL_Renderer *renderer, SDL_Rect *rectToDraw)
     return NO_FAIL;
 }
 
-void CheckOrUpdateBounds(SDL_Rect *rect)
+void CheckOrUpdatePlayerBounds(SDL_Rect *rect)
 {
     if (rect->y < 0)
     {
@@ -118,13 +120,13 @@ void CheckOrUpdateBounds(SDL_Rect *rect)
 void UpdateRectMovementDown(SDL_Rect *rect)
 {
     rect->y += PAD_MOVING_SPEED;
-    CheckOrUpdateBounds(rect);
+    CheckOrUpdatePlayerBounds(rect);
 }
 
 void UpdateRectMovementUp(SDL_Rect *rect)
 {
     rect->y -= PAD_MOVING_SPEED;
-    CheckOrUpdateBounds(rect);
+    CheckOrUpdatePlayerBounds(rect);
 }
 
 void DrawPlayers(SDL_Renderer *renderer, SDL_Window *window, SDL_Rect **players, int count)
@@ -180,11 +182,16 @@ int main()
     }
     p2_rect->h = PAD_HEIGHT;
     p2_rect->w = PAD_WIDTH;
-    p2_rect->x = 600;
+    p2_rect->x = 725;
     p2_rect->y = 100;
 
+    pBall theBall = (pBall)malloc(sizeof(struct ball));
+    theBall->locX = SCREEN_WIDTH / 2;
+    theBall->locY = SCREEN_HEIGHT / 2;
+    theBall->radiusSize = BALL_RADIUS;
+    theBall->renderer = renderer;
+
     SDL_Rect *players[] = {p1_rect, p2_rect};
-    int loc = 50;
     int running = true;
 
     while (running)
@@ -223,10 +230,9 @@ int main()
             CloseWindowAndExitFromThisPain(window, renderer);
         }
         DrawPlayers(renderer, window, players, PLAYER_COUNT);
-
+        DrawBall(theBall);
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // 60 fps ?
-        loc++;
     }
 
     free(p1_rect);
