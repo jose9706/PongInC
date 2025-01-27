@@ -1,8 +1,8 @@
 #include <SDL2/SDL.h>
 #include <stdio.h>
-#include <stdbool.h>
 #include "ball.h"
 #include "players.h"
+#include "utils.h"
 
 #define SUBSYSTEMS SDL_INIT_VIDEO | SDL_INIT_EVENTS
 #define SCREEN_WIDTH 800
@@ -40,36 +40,6 @@ void FinishSDL()
     SDL_Quit();
 }
 
-SDL_Rect GetARect(int x, int y, int h, int w)
-{
-    SDL_Rect rect;
-    rect.h = h;
-    rect.w = w;
-    rect.x = x;
-    rect.y = y;
-    return rect;
-}
-
-enum EVENT_TYPE HandleEvent(SDL_Event *ev)
-{
-    switch (ev->type)
-    {
-    case SDL_QUIT:
-        return EXIT;
-    case SDL_KEYDOWN:
-        return KEYBOARD_DOWN;
-
-    default:
-        printf("UNKNOWN EVENT HAPPENED... %d\n", ev->type);
-        return WTF;
-    }
-}
-
-bool IsMovementKeyPress(SDL_Event *ev)
-{
-    return ev->key.keysym.scancode == SDL_SCANCODE_RIGHT || ev->key.keysym.scancode == SDL_SCANCODE_LEFT || ev->key.keysym.scancode == SDL_SCANCODE_DOWN || ev->key.keysym.scancode == SDL_SCANCODE_UP;
-}
-
 int ClearScreen(SDL_Renderer *renderer)
 {
     if (SDL_SetRenderDrawColor(renderer, BLACK) != 0 || SDL_RenderClear(renderer) != 0)
@@ -86,78 +56,6 @@ void CloseWindowAndExitFromThisPain(SDL_Window *window, SDL_Renderer *renderer)
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
     FinishSDL();
-}
-
-int DrawRect(SDL_Renderer *renderer, SDL_Rect *rectToDraw)
-{
-    if (SDL_SetRenderDrawColor(renderer, WHITE) != 0)
-    {
-        SDL_ERROR_PRINTF("Failing setting renderer color for some reason!!!")
-        return TERRIBLE_FAILURE;
-    }
-    if (SDL_RenderFillRect(renderer, rectToDraw) != 0)
-    {
-        SDL_ERROR_PRINTF("Failing setting renderer color for some reason!!!")
-        return TERRIBLE_FAILURE;
-    }
-
-    return NO_FAIL;
-}
-
-void CheckOrUpdatePlayerBounds(SDL_Rect *rect)
-{
-    if (rect->y < 0)
-    {
-        rect->y = 0;
-    }
-    // Rectangles get drawn from a point at y axis. Hence to not leave the screen from the bottom half we have to take y + height = bottom edge pixels and make sure those dont leave the screen.
-    // Then since we force it to not leave we use SCREEN_HEIGHT - h to get the max location to start the y axis rectangle draw.
-    if (rect->y + rect->h > SCREEN_HEIGHT)
-    {
-        rect->y = SCREEN_HEIGHT - rect->h;
-    }
-}
-
-void HandleBallMovement(pBall ball)
-{
-    ball->locX += ball->vx;
-    ball->locY += ball->vy;
-
-    if (ball->locY - ball->radiusSize < 0)
-    {
-        ball->locY = 0 + ball->radiusSize;
-        ball->vy = -ball->vy;
-    }
-    // Rectangles get drawn from a point at y axis. Hence to not leave the screen from the bottom half we have to take y + height = bottom edge pixels and make sure those dont leave the screen.
-    // Then since we force it to not leave we use SCREEN_HEIGHT - h to get the max location to start the y axis rectangle draw.
-    if (ball->locY + ball->radiusSize > SCREEN_HEIGHT)
-    {
-        ball->locY = SCREEN_HEIGHT - ball->radiusSize;
-        ball->vy = -ball->vy;
-    }
-}
-
-void UpdateRectMovementDown(SDL_Rect *rect)
-{
-    rect->y += PAD_MOVING_SPEED;
-    CheckOrUpdatePlayerBounds(rect);
-}
-
-void UpdateRectMovementUp(SDL_Rect *rect)
-{
-    rect->y -= PAD_MOVING_SPEED;
-    CheckOrUpdatePlayerBounds(rect);
-}
-
-void DrawPlayers(SDL_Renderer *renderer, SDL_Window *window, SDL_Rect **players, int count)
-{
-    for (size_t i = 0; i < count; i++)
-    {
-        if (DrawRect(renderer, players[i]) == TERRIBLE_FAILURE)
-        {
-            CloseWindowAndExitFromThisPain(window, renderer);
-        }
-    }
 }
 
 int main()
@@ -182,48 +80,38 @@ int main()
     }
 
     SDL_Event event;
-    SDL_Rect *p1_rect = (SDL_Rect *)malloc(sizeof(SDL_Rect));
-    if (p1_rect == NULL)
+    pPlayer p1 = InitPlayer(PAD_WIDTH, PAD_HEIGHT, "Player 1", 50, 50);
+    if (p1 == NULL)
     {
-        printf("FAILING ALLOCATING P1 MEMORY AHHHH...\n");
+        printf("Failed creating player 1.");
         CloseWindowAndExitFromThisPain(window, renderer);
-        return 0;
     }
-    p1_rect->h = PAD_HEIGHT;
-    p1_rect->w = PAD_WIDTH;
-    p1_rect->x = 50;
-    p1_rect->y = 50;
-    SDL_Rect *p2_rect = (SDL_Rect *)malloc(sizeof(SDL_Rect));
-    if (p2_rect == NULL)
+    pPlayer p2 = InitPlayer(PAD_WIDTH, PAD_HEIGHT, "Player 2", SCREEN_WIDTH - 50 - PAD_WIDTH, 100);
+    if (p2 == NULL)
     {
-        printf("FAILING ALLOCATING P2 MEMORY AHHHH...\n");
+        printf("Failed creating player 1.");
         CloseWindowAndExitFromThisPain(window, renderer);
-        return 0;
     }
-    p2_rect->h = PAD_HEIGHT;
-    p2_rect->w = PAD_WIDTH;
-    p2_rect->x = 725;
-    p2_rect->y = 100;
 
     pBall theBall = (pBall)malloc(sizeof(struct ball));
     theBall->locX = SCREEN_WIDTH / 2;
     theBall->locY = SCREEN_HEIGHT / 2;
     theBall->radiusSize = BALL_RADIUS;
     theBall->renderer = renderer;
-    theBall->vx = 0;
+    theBall->vx = 10;
     theBall->vy = 3;
+    theBall->leavingPad = false;
 
-    SDL_Rect *players[] = {p1_rect, p2_rect};
+    pPlayers players_s = (pPlayers)malloc(sizeof(struct players));
+    players_s->p1 = p1;
+    players_s->p2 = p2;
+    players_s->renderer = renderer;
     int running = true;
 
     while (running)
     {
         while (SDL_PollEvent(&event)) // This will process every event before any frames!!
         {
-            if (HandleEvent(&event) == EXIT)
-            {
-                running = false;
-            }
             if (event.type == SDL_QUIT)
             {
                 running = false;
@@ -231,35 +119,18 @@ int main()
         }
 
         const Uint8 *keyState = SDL_GetKeyboardState(NULL);
-        if (keyState[SDL_SCANCODE_DOWN])
-        {
-            UpdateRectMovementDown(p1_rect);
-        }
-        if (keyState[SDL_SCANCODE_UP])
-        {
-            UpdateRectMovementUp(p1_rect);
-        }
-        if (keyState[SDL_SCANCODE_W])
-        {
-            UpdateRectMovementUp(p2_rect);
-        }
-        if (keyState[SDL_SCANCODE_S])
-        {
-            UpdateRectMovementDown(p2_rect);
-        }
+        HandlePlayerMovement(keyState, players_s, SCREEN_HEIGHT);
+        HandleBallMovement(theBall, players_s, SCREEN_WIDTH, SCREEN_HEIGHT);
         if (ClearScreen(renderer) == TERRIBLE_FAILURE)
         {
             CloseWindowAndExitFromThisPain(window, renderer);
         }
-        HandleBallMovement(theBall);
-        DrawPlayers(renderer, window, players, PLAYER_COUNT);
+        DrawPlayers(players_s);
         DrawBall(theBall);
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // 60 fps ?
     }
 
-    free(p1_rect);
-    free(p2_rect);
     CloseWindowAndExitFromThisPain(window, renderer);
     return 0;
 }
