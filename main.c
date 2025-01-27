@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include "ball.h"
+#include "players.h"
 
 #define SUBSYSTEMS SDL_INIT_VIDEO | SDL_INIT_EVENTS
 #define SCREEN_WIDTH 800
@@ -117,6 +118,25 @@ void CheckOrUpdatePlayerBounds(SDL_Rect *rect)
     }
 }
 
+void HandleBallMovement(pBall ball)
+{
+    ball->locX += ball->vx;
+    ball->locY += ball->vy;
+
+    if (ball->locY - ball->radiusSize < 0)
+    {
+        ball->locY = 0 + ball->radiusSize;
+        ball->vy = -ball->vy;
+    }
+    // Rectangles get drawn from a point at y axis. Hence to not leave the screen from the bottom half we have to take y + height = bottom edge pixels and make sure those dont leave the screen.
+    // Then since we force it to not leave we use SCREEN_HEIGHT - h to get the max location to start the y axis rectangle draw.
+    if (ball->locY + ball->radiusSize > SCREEN_HEIGHT)
+    {
+        ball->locY = SCREEN_HEIGHT - ball->radiusSize;
+        ball->vy = -ball->vy;
+    }
+}
+
 void UpdateRectMovementDown(SDL_Rect *rect)
 {
     rect->y += PAD_MOVING_SPEED;
@@ -190,6 +210,8 @@ int main()
     theBall->locY = SCREEN_HEIGHT / 2;
     theBall->radiusSize = BALL_RADIUS;
     theBall->renderer = renderer;
+    theBall->vx = 0;
+    theBall->vy = 3;
 
     SDL_Rect *players[] = {p1_rect, p2_rect};
     int running = true;
@@ -229,6 +251,7 @@ int main()
         {
             CloseWindowAndExitFromThisPain(window, renderer);
         }
+        HandleBallMovement(theBall);
         DrawPlayers(renderer, window, players, PLAYER_COUNT);
         DrawBall(theBall);
         SDL_RenderPresent(renderer);
