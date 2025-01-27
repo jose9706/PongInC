@@ -61,7 +61,6 @@ void HandleBallMovement(pBall ball, const pPlayers players, const int screenWidt
     {
         ball->leavingPad = true;
         ball->vx = -ball->vx;
-        // ball->vy = -ball->vy;
     }
     else
     {
