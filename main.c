@@ -137,8 +137,8 @@ int main()
     theBall->locY = SCREEN_HEIGHT / 2;
     theBall->radiusSize = BALL_RADIUS;
     theBall->renderer = renderer;
-    theBall->vx = 10;
-    theBall->vy = 3;
+    theBall->vx = GetRandomStartSpeed(13, 7);
+    theBall->vy = GetRandomStartSpeed(5, 3);
 
     pPlayers players_s = (pPlayers)malloc(sizeof(struct players));
     players_s->p1 = p1;
@@ -159,11 +159,11 @@ int main()
         }
 
         const Uint8 *keyState = SDL_GetKeyboardState(NULL);
+        HandlePlayerMovement(keyState, players_s, SCREEN_HEIGHT);
         if (CheckAndUpdateScore(gameInfo))
         {
             HandleGoalScored(font, renderer, gameInfo);
         }
-        HandlePlayerMovement(keyState, players_s, SCREEN_HEIGHT);
         if (ClearScreen(renderer) == TERRIBLE_FAILURE)
         {
             CloseWindowAndExitFromThisPain(window, renderer, font);
