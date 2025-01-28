@@ -1,8 +1,10 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <stdio.h>
 #include "ball.h"
 #include "players.h"
 #include "utils.h"
+#include "game.h"
 
 #define SUBSYSTEMS SDL_INIT_VIDEO | SDL_INIT_EVENTS
 #define SCREEN_WIDTH 800
@@ -51,11 +53,35 @@ int ClearScreen(SDL_Renderer *renderer)
     return NO_FAIL;
 }
 
-void CloseWindowAndExitFromThisPain(SDL_Window *window, SDL_Renderer *renderer)
+void CloseWindowAndExitFromThisPain(SDL_Window *window, SDL_Renderer *renderer, TTF_Font *font)
 {
+    TTF_CloseFont(font);
     SDL_DestroyWindow(window);
     SDL_DestroyRenderer(renderer);
     FinishSDL();
+    SDL_Quit();
+    TTF_Quit();
+}
+
+void HandleGoalScored(TTF_Font *font, SDL_Renderer *renderer, pGameInfo gameInfo)
+{
+    char scoreText[69];
+    sprintf(scoreText, "Score: %d - %d", gameInfo->players->p1->score, gameInfo->players->p2->score);
+    SDL_Color textColor = {255, 255, 255, 255}; // White color
+    // Render the text
+    SDL_Surface *textSurface = TTF_RenderText_Solid(font, scoreText, textColor);
+    SDL_Texture *textTexture = SDL_CreateTextureFromSurface(renderer, textSurface);
+    SDL_FreeSurface(textSurface);
+
+    // Clear the screen and render the new text
+    SDL_SetRenderDrawColor(renderer, BLACK);
+
+    SDL_RenderClear(renderer);
+    SDL_Rect textRect = {SCREEN_HEIGHT / 2, SCREEN_WIDTH / 2, textSurface->w, textSurface->h};
+    SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
+    SDL_RenderPresent(renderer);
+
+    SDL_Delay(3000);
 }
 
 int main()
@@ -63,20 +89,33 @@ int main()
     if (SDL_Init(SUBSYSTEMS))
     {
         SDL_ERROR_PRINTF("Failed misserably for unknown reasons starting SDL...")
-        return 0;
+        return 1;
     }
+    if (TTF_Init() == -1)
+    {
+        printf("TTF could not initialize! TTF_Error: %s\n", TTF_GetError());
+        return 1;
+    }
+
+    TTF_Font *font = TTF_OpenFont("./arialbi.ttf", 24); // 24 is the font size
+    if (!font)
+    {
+        printf("Failed to load font! TTF_Error: %s\n", TTF_GetError());
+        return 1;
+    }
+
     SDL_Window *window = SDL_CreateWindow("The window", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, SCREEN_WIDTH, SCREEN_HEIGHT, SDL_WINDOW_RESIZABLE | SDL_WINDOW_OPENGL);
     if (!window)
     {
         SDL_ERROR_PRINTF("Window is NULL, printing error and failing")
-        return 0;
+        return 1;
     }
 
     SDL_Renderer *renderer = SDL_CreateRenderer(window, -1, SDL_RENDERER_ACCELERATED);
     if (!renderer)
     {
         SDL_ERROR_PRINTF("Failing creating renderer...")
-        return 0;
+        return 1;
     }
 
     SDL_Event event;
@@ -84,13 +123,13 @@ int main()
     if (p1 == NULL)
     {
         printf("Failed creating player 1.");
-        CloseWindowAndExitFromThisPain(window, renderer);
+        CloseWindowAndExitFromThisPain(window, renderer, font);
     }
     pPlayer p2 = InitPlayer(PAD_WIDTH, PAD_HEIGHT, "Player 2", SCREEN_WIDTH - 50 - PAD_WIDTH, 100);
     if (p2 == NULL)
     {
         printf("Failed creating player 1.");
-        CloseWindowAndExitFromThisPain(window, renderer);
+        CloseWindowAndExitFromThisPain(window, renderer, font);
     }
 
     pBall theBall = (pBall)malloc(sizeof(struct ball));
@@ -100,13 +139,14 @@ int main()
     theBall->renderer = renderer;
     theBall->vx = 10;
     theBall->vy = 3;
-    theBall->leavingPad = false;
 
     pPlayers players_s = (pPlayers)malloc(sizeof(struct players));
     players_s->p1 = p1;
     players_s->p2 = p2;
     players_s->renderer = renderer;
     int running = true;
+
+    pGameInfo gameInfo = InitGameInfo(SCREEN_WIDTH, SCREEN_HEIGHT, players_s, theBall);
 
     while (running)
     {
@@ -119,11 +159,14 @@ int main()
         }
 
         const Uint8 *keyState = SDL_GetKeyboardState(NULL);
+        if (CheckAndUpdateScore(gameInfo))
+        {
+            HandleGoalScored(font, renderer, gameInfo);
+        }
         HandlePlayerMovement(keyState, players_s, SCREEN_HEIGHT);
-        HandleBallMovement(theBall, players_s, SCREEN_WIDTH, SCREEN_HEIGHT);
         if (ClearScreen(renderer) == TERRIBLE_FAILURE)
         {
-            CloseWindowAndExitFromThisPain(window, renderer);
+            CloseWindowAndExitFromThisPain(window, renderer, font);
         }
         DrawPlayers(players_s);
         DrawBall(theBall);
@@ -131,6 +174,6 @@ int main()
         SDL_Delay(16); // 60 fps ?
     }
 
-    CloseWindowAndExitFromThisPain(window, renderer);
+    CloseWindowAndExitFromThisPain(window, renderer, font);
     return 0;
 }

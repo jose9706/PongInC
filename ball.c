@@ -5,7 +5,7 @@ void DrawBall(pBall ball)
     DrawCircle(ball->renderer, ball->locX, ball->locY, ball->radiusSize);
 }
 
-bool IsBallHittingPad(pBall ball, const pPlayers players)
+void ProcessBallHittingPad(pBall ball, const pPlayers players)
 {
     SDL_Rect *p1Rect = players->p1->pad;
     SDL_Rect *p2Rect = players->p2->pad;
@@ -16,7 +16,17 @@ bool IsBallHittingPad(pBall ball, const pPlayers players)
         if (ball->locY + ball->radiusSize >= p1Rect->y &&
             ball->locY - ball->radiusSize <= p1Rect->y + p1Rect->h)
         {
-            // TODO move the ball to the closest edge and flip the speed as we already do.
+            // Move the ball to the closest edge and flip the speed
+            if (ball->locX < p1Rect->x + p1Rect->w / 2)
+            {
+                ball->locX = p1Rect->x - ball->radiusSize; // Move to the left side
+            }
+            else
+            {
+                ball->locX = p1Rect->x + p1Rect->w + ball->radiusSize; // Move to the right side
+            }
+            ball->vx = -ball->vx;
+
             // Check if hitting the top or bottom half of the pad
             if (ball->locY < p1Rect->y + p1Rect->h / 2)
             {
@@ -26,7 +36,6 @@ bool IsBallHittingPad(pBall ball, const pPlayers players)
             {
                 ball->vy = abs(ball->vy); // Hitting bottom half, move down
             }
-            return true;
         }
     }
 
@@ -37,6 +46,17 @@ bool IsBallHittingPad(pBall ball, const pPlayers players)
         if (ball->locY + ball->radiusSize >= p2Rect->y &&
             ball->locY - ball->radiusSize <= p2Rect->y + p2Rect->h)
         {
+            // Move the ball to the closest edge and flip the speed
+            if (ball->locX < p2Rect->x + p2Rect->w / 2)
+            {
+                ball->locX = p2Rect->x - ball->radiusSize; // Move to the left side
+            }
+            else
+            {
+                ball->locX = p2Rect->x + p2Rect->w + ball->radiusSize; // Move to the right side
+            }
+            ball->vx = -ball->vx;
+
             // Check if hitting the top or bottom half of the pad
             if (ball->locY < p2Rect->y + p2Rect->h / 2)
             {
@@ -46,39 +66,20 @@ bool IsBallHittingPad(pBall ball, const pPlayers players)
             {
                 ball->vy = abs(ball->vy); // Hitting bottom half, move down
             }
-            return true;
         }
     }
-
-    return false;
 }
 
 void HandleBallMovement(pBall ball, const pPlayers players, const int screenWidth, const int screenHeight)
 {
     ball->locX += ball->vx;
     ball->locY += ball->vy;
-    if (IsBallHittingPad(ball, players) && !ball->leavingPad)
-    {
-        ball->leavingPad = true;
-        ball->vx = -ball->vx;
-    }
-    else
-    {
-        if (ball->leavingPad)
-            ball->leavingPad = false;
-    }
-    if (ball->locX - ball->radiusSize < 0)
-    {
-        ball->locX = 0 + ball->radiusSize;
-        ball->vx = -ball->vx;
-    }
+    ProcessBallHittingPad(ball, players);
+    ProcessBallBounceOffEdges(ball, screenHeight);
+}
 
-    if (ball->locX + ball->radiusSize > screenWidth)
-    {
-        ball->locX = screenWidth - ball->radiusSize;
-        ball->vx = -ball->vx;
-    }
-
+void ProcessBallBounceOffEdges(pBall ball, const int screenHeight)
+{
     if (ball->locY - ball->radiusSize < 0)
     {
         ball->locY = 0 + ball->radiusSize;
@@ -90,6 +91,25 @@ void HandleBallMovement(pBall ball, const pPlayers players, const int screenWidt
         ball->locY = screenHeight - ball->radiusSize;
         ball->vy = -ball->vy;
     }
+}
+
+pPlayer CheckBoundsForGoal(pBall ball, const int screenWidth, const pPlayers players)
+{
+    if (ball->locX - ball->radiusSize < 0)
+    {
+        ball->locX = 0 + ball->radiusSize;
+        ball->vx = -ball->vx;
+        return players->p2;
+    }
+
+    if (ball->locX + ball->radiusSize > screenWidth)
+    {
+        ball->locX = screenWidth - ball->radiusSize;
+        ball->vx = -ball->vx;
+        return players->p1;
+    }
+
+    return NULL;
 }
 
 // TODO add error managment.
