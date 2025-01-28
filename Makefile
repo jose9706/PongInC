@@ -1,6 +1,6 @@
 
 # SDL2 Library
-LIBS = -lSDL2
+LIBS = -lSDL2 -lSDL2_ttf
 
 # Output binary name
 OUTPUT = test
