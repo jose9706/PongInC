@@ -27,3 +27,21 @@ bool CheckAndUpdateScore(pGameInfo gameInfo)
     HandleBallMovement(ball, players, gameInfo->screenWidth, gameInfo->screenHeight);
     return false;
 }
+
+void ResetGame(pGameInfo gameInfo)
+{
+    // Reset ball
+    pBall ball = gameInfo->ball;
+    ball->locX = gameInfo->startBallLocX;
+    ball->locY = gameInfo->startBallLocY;
+    DrawBall(ball);
+}
+
+void CheckTicksAndIncreaseSpeed(int *ticks, pGameInfo gameInfo)
+{
+    if (*ticks == TICKS_TO_INCREASE_SPEED)
+    {
+        gameInfo->ball->vx += 3;
+        *ticks = 0;
+    }
+}

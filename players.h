@@ -2,7 +2,7 @@
 #include "SDL2/SDL.h"
 #include "utils.h"
 #define WHITE 255, 255, 255, 255
-#define PAD_MOVING_SPEED 10
+#define PAD_MOVING_SPEED 15
 
 typedef struct player
 {

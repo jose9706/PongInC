@@ -63,10 +63,8 @@ void CloseWindowAndExitFromThisPain(SDL_Window *window, SDL_Renderer *renderer, 
     TTF_Quit();
 }
 
-void HandleGoalScored(TTF_Font *font, SDL_Renderer *renderer, pGameInfo gameInfo)
+void DrawTextMiddleScreen(TTF_Font *font, char scoreText[69], SDL_Renderer *renderer, bool clearScreen)
 {
-    char scoreText[69];
-    sprintf(scoreText, "Score: %d - %d", gameInfo->players->p1->score, gameInfo->players->p2->score);
     SDL_Color textColor = {255, 255, 255, 255}; // White color
     // Render the text
     SDL_Surface *textSurface = TTF_RenderText_Solid(font, scoreText, textColor);
@@ -76,12 +74,43 @@ void HandleGoalScored(TTF_Font *font, SDL_Renderer *renderer, pGameInfo gameInfo
     // Clear the screen and render the new text
     SDL_SetRenderDrawColor(renderer, BLACK);
 
-    SDL_RenderClear(renderer);
     SDL_Rect textRect = {SCREEN_HEIGHT / 2, SCREEN_WIDTH / 2, textSurface->w, textSurface->h};
+    if (clearScreen)
+    {
+        SDL_SetRenderDrawColor(renderer, BLACK);
+        SDL_RenderClear(renderer);
+    }
+    else
+    {
+        SDL_SetRenderDrawColor(renderer, BLACK);
+        SDL_RenderFillRect(renderer, &textRect);
+    }
+
     SDL_RenderCopy(renderer, textTexture, NULL, &textRect);
     SDL_RenderPresent(renderer);
+}
 
-    SDL_Delay(3000);
+void DrawGoalScoredScreen(TTF_Font *font, SDL_Renderer *renderer, pGameInfo gameInfo)
+{
+    char scoreText[69];
+    sprintf(scoreText, "Score: %d - %d", gameInfo->players->p1->score, gameInfo->players->p2->score);
+    DrawTextMiddleScreen(font, scoreText, renderer, true);
+    SDL_Delay(2000);
+    SDL_RenderClear(renderer);
+}
+
+void DrawCoundown(TTF_Font *font, SDL_Renderer *renderer, pGameInfo gameInfo)
+{
+    char countDown[69];
+    sprintf(countDown, "....3....");
+    DrawTextMiddleScreen(font, countDown, renderer, false);
+    SDL_Delay(1000);
+    sprintf(countDown, "....2....");
+    DrawTextMiddleScreen(font, countDown, renderer, false);
+    SDL_Delay(1000);
+    sprintf(countDown, "....1....");
+    DrawTextMiddleScreen(font, countDown, renderer, false);
+    SDL_Delay(1000);
 }
 
 int main()
@@ -145,6 +174,7 @@ int main()
     players_s->p2 = p2;
     players_s->renderer = renderer;
     int running = true;
+    int ticks = 0;
 
     pGameInfo gameInfo = InitGameInfo(SCREEN_WIDTH, SCREEN_HEIGHT, players_s, theBall);
 
@@ -162,7 +192,10 @@ int main()
         HandlePlayerMovement(keyState, players_s, SCREEN_HEIGHT);
         if (CheckAndUpdateScore(gameInfo))
         {
-            HandleGoalScored(font, renderer, gameInfo);
+            DrawGoalScoredScreen(font, renderer, gameInfo);
+            ResetGame(gameInfo);
+            DrawPlayers(gameInfo->players);
+            DrawCoundown(font, renderer, gameInfo);
         }
         if (ClearScreen(renderer) == TERRIBLE_FAILURE)
         {
@@ -172,6 +205,8 @@ int main()
         DrawBall(theBall);
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // 60 fps ?
+        ticks++;
+        CheckTicksAndIncreaseSpeed(&ticks, gameInfo);
     }
 
     CloseWindowAndExitFromThisPain(window, renderer, font);

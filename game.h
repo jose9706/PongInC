@@ -4,6 +4,8 @@
 #include "ball.h"
 #include "players.h"
 
+#define TICKS_TO_INCREASE_SPEED 625
+
 typedef struct gameInfo
 {
     int screenWidth;
@@ -20,4 +22,6 @@ pGameInfo InitGameInfo(int screenWidth, int screenHeight, pPlayers players, pBal
 
 bool CheckAndUpdateScore(pGameInfo gameInfo);
 
-void ResetGame();
+void ResetGame(pGameInfo gameInfo);
+
+void CheckTicksAndIncreaseSpeed(int *ticks, pGameInfo gameInfo);
